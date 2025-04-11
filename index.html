@@ -1,0 +1,312 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>抗弯承载力计算（矩形/T形截面）</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f0f8ff;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h2 { 
+            color: #1e3799; 
+            border-bottom: 2px solid #1e3799;
+            padding-bottom: 10px;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%;
+            margin: 20px 0;
+            border: 2px solid #1e3799;
+        }
+        th, td { 
+            border: 1px solid #a4c2f4; 
+            padding: 10px; 
+            text-align: left; 
+        }
+        th {
+            background-color: #1e3799;
+            color: white;
+        }
+        .input-section {
+            background-color: #e6f0ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        input, select {
+            width: 120px;
+            padding: 5px;
+            border: 1px solid #1e3799;
+            border-radius: 4px;
+        }
+        .input-cell { 
+            background-color: #e6f0ff; 
+            color: #1e3799;
+            font-weight: bold;
+        }
+        .output-section {
+            background-color: #f8f9ff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .warning { 
+            color: #e74c3c; 
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .note {
+            color: #3498db;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        .t-section-row { background-color: #fff3e0; }
+        .double-reinforce-row { background-color: #ffe0e6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>抗弯承载力计算（矩形/T形截面）</h2>
+        
+        <div class="input-section">
+            <table>
+                <tr>
+                    <td>截面类型</td>
+                    <td colspan="3">
+                        <select id="section_type" class="input-cell" onchange="toggleSection()">
+                            <option value="rectangular">矩形截面</option>
+                            <option value="T-section">T形截面</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr id="reinforce_type_row">
+                    <td>配筋类型</td>
+                    <td colspan="3">
+                        <select id="reinforce_type" class="input-cell" onchange="toggleReinforce()">
+                            <option value="single">单筋截面</option>
+                            <option value="double">双筋截面</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr id="t_section_inputs" class="t-section-row" style="display:none;">
+                    <td>翼缘宽度 bf (mm)</td>
+                    <td><input type="number" id="bf" class="input-cell" value="600"></td>
+                    <td>翼缘高度 hf (mm)</td>
+                    <td><input type="number" id="hf" class="input-cell" value="100"></td>
+                </tr>
+                <tr id="double_reinforce_inputs" class="double-reinforce-row" style="display:none;">
+                    <td>受压筋根数</td>
+                    <td><input type="number" id="Ny" class="input-cell" value="2"></td>
+                    <td>受压筋直径 (mm)</td>
+                    <td><input type="number" id="phiy" class="input-cell" value="20"></td>
+                </tr>
+                <tr>
+                    <td>混凝土等级</td>
+                    <td>
+                        <select id="concrete_grade" class="input-cell">
+                            <option value="20">C20</option>
+                            <option value="25">C25</option>
+                            <option value="30" selected>C30</option>
+                            <option value="35">C35</option>
+                            <option value="40">C40</option>
+                        </select>
+                    </td>
+                    <td>纵筋等级</td>
+                    <td>
+                        <select id="steel_grade" class="input-cell">
+                            <option value="235">HPB235</option>
+                            <option value="335" selected>HRB335</option>
+                            <option value="400">HRB400</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>腹板宽度 b (mm)</td>
+                    <td><input type="number" id="b" class="input-cell" value="250"></td>
+                    <td>梁高 h (mm)</td>
+                    <td><input type="number" id="h" class="input-cell" value="800"></td>
+                </tr>
+                <tr>
+                    <td>保护层 ca (mm)</td>
+                    <td><input type="number" id="ca" class="input-cell" value="60"></td>
+                    <td>有效高度 h0</td>
+                    <td><span id="h0">740</span> mm</td>
+                </tr>
+                <tr>
+                    <td>受拉筋根数</td>
+                    <td><input type="number" id="N" class="input-cell" value="8"></td>
+                    <td>受拉筋直径 (mm)</td>
+                    <td><input type="number" id="phi" class="input-cell" value="20"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="output-section">
+            <table>
+                <tr>
+                    <td>受拉筋面积 As</td>
+                    <td><span id="As">2513.27</span> mm²</td>
+                    <td>受压筋面积 As'</td>
+                    <td><span id="Asy">628.32</span> mm²</td>
+                </tr>
+                <tr>
+                    <td>受压区高度 x</td>
+                    <td><span id="x">174.16</span> mm</td>
+                    <td>相对受压区高度 ξ</td>
+                    <td><span id="xi">0.235</span></td>
+                </tr>
+                <tr>
+                    <td>抗弯承载力 Mu</td>
+                    <td colspan="3"><span id="Mu">504.75</span> kN·m</td>
+                </tr>
+            </table>
+            <div id="warning" class="warning"></div>
+            <div class="note">
+                <p>计算说明：</p>
+                <p>1. 矩形截面时显示单筋/双筋选择，T形截面自动隐藏</p>
+                <p>2. 超筋条件：ξ＞ξb 或 x＜2a' 时给出警告提示</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 材料参数映射
+        const concreteParams = {
+            "20": { fc: 9.6, ft: 1.1, Ec: 25500 },
+            "25": { fc: 11.9, ft: 1.27, Ec: 28000 },
+            "30": { fc: 14.3, ft: 1.43, Ec: 30000 },
+            "35": { fc: 16.7, ft: 1.57, Ec: 31500 },
+            "40": { fc: 19.1, ft: 1.71, Ec: 32500 }
+        };
+
+        const steelParams = {
+            "235": { fy: 210, Es: 210000 },
+            "335": { fy: 300, Es: 200000 },
+            "400": { fy: 360, Es: 200000 }
+        };
+
+        // 截面类型切换
+        function toggleSection() {
+            const sectionType = document.getElementById("section_type").value;
+            const isRectangular = sectionType === "rectangular";
+            
+            // 控制T形截面输入
+            document.getElementById("t_section_inputs").style.display = 
+                isRectangular ? "none" : "table-row";
+            
+            // 控制配筋类型显示
+            document.getElementById("reinforce_type_row").style.display = 
+                isRectangular ? "table-row" : "none";
+            
+            // 重置双筋输入显示
+            toggleReinforce();
+            calculate();
+        }
+
+        // 配筋类型切换
+        function toggleReinforce() {
+            const reinforceType = document.getElementById("reinforce_type").value;
+            document.getElementById("double_reinforce_inputs").style.display = 
+                reinforceType === "double" ? "table-row" : "none";
+            calculate();
+        }
+
+        // 绑定输入事件
+        document.querySelectorAll('.input-cell').forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+
+        function calculate() {
+            // 获取输入参数
+            const sectionType = document.getElementById("section_type").value;
+            const reinforceType = document.getElementById("reinforce_type").value;
+            const cGrade = document.getElementById("concrete_grade").value;
+            const sGrade = document.getElementById("steel_grade").value;
+            const b = parseFloat(document.getElementById("b").value);
+            const h = parseFloat(document.getElementById("h").value);
+            const ca = parseFloat(document.getElementById("ca").value);
+            const N = parseFloat(document.getElementById("N").value);
+            const phi = parseFloat(document.getElementById("phi").value);
+            const Ny = parseFloat(document.getElementById("Ny").value || 0);
+            const phiy = parseFloat(document.getElementById("phiy").value || 0);
+            const bf = parseFloat(document.getElementById("bf").value || 0);
+            const hf = parseFloat(document.getElementById("hf").value || 0);
+
+            // 计算基本参数
+            const h0 = h - ca;
+            document.getElementById("h0").textContent = h0.toFixed(0);
+
+            // 钢筋面积计算
+            const As = N * Math.PI * phi ** 2 / 4;
+            const Asy = reinforceType === "double" ? Ny * Math.PI * phiy ** 2 / 4 : 0;
+            document.getElementById("As").textContent = As.toFixed(2);
+            document.getElementById("Asy").textContent = Asy.toFixed(2);
+
+            // 材料参数
+            const alpha1 = 1.0;
+            const fc = concreteParams[cGrade].fc;
+            const fy = steelParams[sGrade].fy;
+            const xi_b = 0.55;
+
+            // 核心计算逻辑
+            let x, xi, Mu;
+            if (sectionType === "T-section") {
+                // T形截面计算逻辑（同之前版本）
+                const Fy = fy * As;
+                const Ff = alpha1 * fc * bf * hf;
+                if (Fy > Ff) { 
+                    x = (Fy - alpha1 * fc * (bf - b) * hf) / (alpha1 * fc * b) + hf;
+                    const Mu1 = alpha1 * fc * (bf - b) * hf * (h0 - hf / 2);
+                    const Mu2 = alpha1 * fc * b * (x - hf) * (h0 - (x + hf) / 2);
+                    Mu = (Mu1 + Mu2) / 1e6;
+                } else { 
+                    x = Fy / (alpha1 * fc * bf);
+                    Mu = (alpha1 * fc * bf * x * (h0 - x / 2)) / 1e6;
+                }
+            } else {
+                // 矩形截面计算
+                if (reinforceType === "single") {
+                    x = (fy * As) / (alpha1 * fc * b);
+                    Mu = (alpha1 * fc * b * x * (h0 - x / 2)) / 1e6;
+                } else {
+                    // 双筋截面计算
+                    const fy_prime = fy; // 假设受压钢筋强度相同
+                    x = (fy * As - fy_prime * Asy) / (alpha1 * fc * b);
+                    Mu = (alpha1 * fc * b * x * (h0 - x / 2) + fy_prime * Asy * (h0 - ca)) / 1e6;
+                }
+            }
+
+            // 相对受压区高度
+            xi = x / h0;
+            
+            // 结果检查与提示
+            let warning = "";
+            if (xi > xi_b) {
+                warning = `超筋警告！ξ=${xi.toFixed(3)} > ξb=${xi_b}`;
+            } else if (x < 2 * ca) {
+                x = 2 * ca;
+                warning = "提示：x < 2a'，已按x=2a'计算";
+                Mu = (alpha1 * fc * b * x * (h0 - x / 2)) / 1e6;
+            }
+
+            // 更新显示结果
+            document.getElementById("x").textContent = x.toFixed(2);
+            document.getElementById("xi").textContent = xi.toFixed(3);
+            document.getElementById("Mu").textContent = Mu.toFixed(2);
+            document.getElementById("warning").textContent = warning;
+        }
+
+        // 初始化计算
+        toggleSection();
+    </script>
+</body>
+</html>
